@@ -1,0 +1,2 @@
+rootProject.name='EventBusLite'
+include ':app'
