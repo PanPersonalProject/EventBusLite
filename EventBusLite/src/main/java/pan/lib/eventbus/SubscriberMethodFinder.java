@@ -22,15 +22,23 @@ public class SubscriberMethodFinder {
         }
 
         List<SubscriberMethod> subscriberMethodList = new ArrayList<>();
-        for (Method method : subscriberClass.getMethods()) {
-            Subscribe subscribe = method.getAnnotation(Subscribe.class);
-            if (subscribe != null) {
+        while (subscriberClass != null) {
+            for (Method method : subscriberClass.getDeclaredMethods()) {
+                Subscribe subscribe = method.getAnnotation(Subscribe.class);
+                if (subscribe == null) continue;
+
+                Class<?>[] parameterTypes = method.getParameterTypes();
+                if (parameterTypes.length != 1) {
+                    throw new RuntimeException("EventBus订阅的函数必需是一个参数");
+                }
                 SubscriberMethod subscriberMethod = new SubscriberMethod(method);
                 subscriberMethodList.add(subscriberMethod);
             }
+
+            METHOD_CACHE.put(subscriberClass, subscriberMethodList);
+            subscriberClass = subscriberClass.getSuperclass();
         }
 
-        METHOD_CACHE.put(subscriberClass, subscriberMethodList);
         return subscriberMethodList;
     }
 }
