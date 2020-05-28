@@ -1,10 +1,16 @@
 package pan.lib.eventbus;
 
+import android.os.Handler;
+import android.os.Looper;
+
+import java.lang.reflect.InvocationTargetException;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 /**
  * Author:         pan qi
@@ -13,6 +19,8 @@ import java.util.concurrent.CopyOnWriteArrayList;
 public class EventBusLite {
     private static EventBusLite eventBusLite;
     private SubscriberMethodFinder subscriberMethodFinder;
+    private Handler mainHandler;
+    private ExecutorService executorService;//线程池
 
     //订阅该参数类型--对象列表
     private final Map<Class<?>, CopyOnWriteArrayList<Subscription>> subscriptionsByEventType;
@@ -30,6 +38,8 @@ public class EventBusLite {
     public EventBusLite() {
         subscriberMethodFinder = new SubscriberMethodFinder();
         subscriptionsByEventType = new HashMap<>();
+        mainHandler = new Handler(Looper.getMainLooper());
+        executorService = Executors.newCachedThreadPool();
     }
 
     public void register(Object subscriber) {
@@ -76,10 +86,41 @@ public class EventBusLite {
         }
     }
 
-    public void post(Object object) {
+    public void post(final Object object) {
         CopyOnWriteArrayList<Subscription> subscriptionList = subscriptionsByEventType.get(object.getClass());
-        for (Subscription subscription : subscriptionList) {
-            invokeSubscribeMethod(subscription, object);
+        if (subscriptionList == null) return;
+        for (final Subscription subscription : subscriptionList) {
+            switch (subscription.subscriberMethod.threadMode) {
+                case MAIN:
+                    if (Looper.getMainLooper() == Looper.myLooper()) {
+                        invokeSubscribeMethod(subscription, object);
+                    } else {
+                        mainHandler.post(new Runnable() {
+                            @Override
+                            public void run() {
+                                invokeSubscribeMethod(subscription, object);
+                            }
+                        });
+                    }
+
+                    break;
+                case POSTING:
+                    invokeSubscribeMethod(subscription, object);
+                    break;
+                case ASYNC:
+                    if (Looper.getMainLooper() == Looper.myLooper()) {
+                        executorService.execute(new Runnable() {
+                            @Override
+                            public void run() {
+                                invokeSubscribeMethod(subscription, object);
+                            }
+                        });
+                    } else {
+                        invokeSubscribeMethod(subscription, object);
+                    }
+                    break;
+            }
+
         }
 
     }
@@ -87,9 +128,10 @@ public class EventBusLite {
     private void invokeSubscribeMethod(Subscription subscription, Object event) {
         try {
             subscription.subscriberMethod.method.invoke(subscription.subscriber, event);
-        } catch (Exception e) {
-            throw new RuntimeException("ERROR " + e.getMessage());
-
+        } catch (InvocationTargetException e) {
+            throw new RuntimeException(e.getTargetException().getMessage());
+        } catch (IllegalAccessException e) {
+            throw new RuntimeException(e.getMessage());
         }
     }
 
