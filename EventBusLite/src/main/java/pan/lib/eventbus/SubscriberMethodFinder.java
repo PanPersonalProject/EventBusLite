@@ -31,7 +31,7 @@ public class SubscriberMethodFinder {
                 if (parameterTypes.length != 1) {
                     throw new RuntimeException("EventBus订阅的函数必需是一个参数");
                 }
-                SubscriberMethod subscriberMethod = new SubscriberMethod(method);
+                SubscriberMethod subscriberMethod = new SubscriberMethod(method, parameterTypes[0], subscribe.threadMode());
                 subscriberMethodList.add(subscriberMethod);
             }
 

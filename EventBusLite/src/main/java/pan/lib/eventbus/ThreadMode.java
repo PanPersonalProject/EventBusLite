@@ -6,6 +6,7 @@ package pan.lib.eventbus;
  */
 public enum ThreadMode {
     /**
+     * post当前event的线程
      * Subscriber will be called directly in the same thread, which is posting the event. This is the default. Event delivery
      * implies the least overhead because it avoids thread switching completely. Thus this is the recommended mode for
      * simple tasks that are known to complete in a very short time without requiring the main thread. Event handlers
@@ -14,6 +15,7 @@ public enum ThreadMode {
     POSTING,
 
     /**
+     * 主线程
      * On Android, subscriber will be called in Android's main thread (UI thread). If the posting thread is
      * the main thread, subscriber methods will be called directly, blocking the posting thread. Otherwise the event
      * is queued for delivery (non-blocking). Subscribers using this mode must return quickly to avoid blocking the main thread.
@@ -36,6 +38,7 @@ public enum ThreadMode {
     BACKGROUND,
 
     /**
+     * 新开一个线程发送
      * Subscriber will be called in a separate thread. This is always independent from the posting thread and the
      * main thread. Posting events never wait for subscriber methods using this mode. Subscriber methods should
      * use this mode if their execution might take some time, e.g. for network access. Avoid triggering a large number
